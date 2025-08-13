@@ -237,7 +237,7 @@ function App() {
           />
           <div className="markdown-preview">
             <ReactMarkdown
-              remarkPlugins={[remarkGfm, customMarkdownPlugins]}
+              remarkPlugins={[remarkGfm, customMarkdownPlugins()]}
               rehypePlugins={[rehypeHighlight]}
               components={{
                 // Checklist rendering
