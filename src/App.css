@@ -1,0 +1,115 @@
+
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Segoe UI', Arial, sans-serif;
+  transition: background 0.3s, color 0.3s;
+}
+
+body[data-theme='light'] {
+  --bg: #f6f8fa;
+  --text: #222;
+  --panel: #fff;
+  --border: #e1e4e8;
+  --input: #f9f9f9;
+}
+body[data-theme='dark'] {
+  --bg: #181a1b;
+  --text: #f6f8fa;
+  --panel: #23272f;
+  --border: #333;
+  --input: #23272f;
+}
+
+.markdown-editor-container {
+  max-width: 900px;
+  margin: 2rem auto;
+  background: var(--panel);
+  border-radius: 12px;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.07);
+  padding: 2rem;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.filename-input {
+  font-size: 1rem;
+  padding: 0.2rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--input);
+  color: var(--text);
+}
+
+.file-list {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.file-item {
+  background: var(--input);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.2rem 0.7rem;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  cursor: pointer;
+  transition: background 0.2s, border 0.2s;
+}
+.file-item.active {
+  border: 2px solid #0078d4;
+  font-weight: bold;
+}
+.file-item button {
+  background: none;
+  border: none;
+  color: #d32f2f;
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+.editor-preview-wrapper {
+  display: flex;
+  gap: 2rem;
+  margin-top: 2rem;
+}
+
+.markdown-input {
+  width: 50%;
+  min-height: 400px;
+  font-size: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  resize: vertical;
+  font-family: 'Fira Mono', 'Consolas', monospace;
+  background: var(--input);
+  color: var(--text);
+}
+
+.markdown-preview {
+  width: 50%;
+  min-height: 400px;
+  background: var(--input);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1rem;
+  overflow: auto;
+  text-align: left;
+  color: var(--text);
+}
+
+.markdown-preview h1,
+.markdown-preview h2,
+.markdown-preview h3 {
+  margin-top: 1.2em;
+}
