@@ -2,6 +2,60 @@
 
 import { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import rehypeHighlight from 'rehype-highlight';
+import 'highlight.js/styles/github.css';
+
+// Custom plugin for superscript, subscript, and highlight
+import { visit } from 'unist-util-visit';
+function customMarkdownPlugins() {
+  return (tree) => {
+    visit(tree, 'text', (node, index, parent) => {
+      let value = node.value;
+      let nodes = [];
+      let lastIndex = 0;
+      // Regex for highlight ==text==
+      const highlightRegex = /==([^=]+)==/g;
+      // Regex for superscript ^text^
+      const supRegex = /\^([^\^]+)\^/g;
+      // Regex for subscript ~text~
+      const subRegex = /~([^~]+)~/g;
+      while (true) {
+        let h = highlightRegex.exec(value);
+        let s = supRegex.exec(value);
+        let sub = subRegex.exec(value);
+        let matches = [h, s, sub].filter(Boolean);
+        if (matches.length === 0) break;
+        // Find the earliest match
+        let first = matches.reduce((a, b) => (a.index < b.index ? a : b));
+        if (first.index > lastIndex) {
+          nodes.push({ type: 'text', value: value.slice(lastIndex, first.index) });
+        }
+        if (first === h) {
+          nodes.push({ type: 'element', tagName: 'mark', children: [{ type: 'text', value: h[1] }] });
+          lastIndex = h.index + h[0].length;
+        } else if (first === s) {
+          nodes.push({ type: 'element', tagName: 'sup', children: [{ type: 'text', value: s[1] }] });
+          lastIndex = s.index + s[0].length;
+        } else if (first === sub) {
+          nodes.push({ type: 'element', tagName: 'sub', children: [{ type: 'text', value: sub[1] }] });
+          lastIndex = sub.index + sub[0].length;
+        }
+        // Reset regex lastIndex for next search
+        highlightRegex.lastIndex = lastIndex;
+        supRegex.lastIndex = lastIndex;
+        subRegex.lastIndex = lastIndex;
+      }
+      if (lastIndex < value.length) {
+        nodes.push({ type: 'text', value: value.slice(lastIndex) });
+      }
+      if (nodes.length > 0) {
+        parent.children.splice(index, 1, ...nodes);
+        return [visit.SKIP, index + nodes.length];
+      }
+    });
+  };
+}
 import './App.css';
 
 const STORAGE_KEY = 'markdown-files';
@@ -140,7 +194,26 @@ function App() {
           placeholder="Type your markdown here..."
         />
         <div className="markdown-preview">
-          <ReactMarkdown>{markdown}</ReactMarkdown>
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm, customMarkdownPlugins]}
+            rehypePlugins={[rehypeHighlight]}
+            components={{
+              // Checklist rendering
+              li({ children, checked, ...props }) {
+                if (typeof checked === 'boolean') {
+                  return (
+                    <li {...props} className="checklist-item">
+                      <input type="checkbox" checked={checked} readOnly />{' '}
+                      {children}
+                    </li>
+                  );
+                }
+                return <li {...props}>{children}</li>;
+              },
+            }}
+          >
+            {markdown}
+          </ReactMarkdown>
         </div>
       </div>
     </div>

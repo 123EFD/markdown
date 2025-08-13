@@ -1,3 +1,66 @@
+.markdown-preview mark {
+  background: #ffe066;
+  color: #222;
+  padding: 0 0.2em;
+  border-radius: 3px;
+}
+.markdown-preview sup {
+  font-size: 0.8em;
+  vertical-align: super;
+}
+.markdown-preview sub {
+  font-size: 0.8em;
+  vertical-align: sub;
+}
+.markdown-preview blockquote {
+  border-left: 4px solid #0078d4;
+  margin: 1em 0;
+  padding: 0.5em 1em;
+  background: rgba(0,120,212,0.05);
+}
+.markdown-preview table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1em 0;
+}
+.markdown-preview th, .markdown-preview td {
+  border: 1px solid var(--border);
+  padding: 0.5em 1em;
+}
+.markdown-preview th {
+  background: #f3f3f3;
+}
+.markdown-preview tr:nth-child(even) td {
+  background: #fafbfc;
+}
+.markdown-preview code {
+  background: #f3f3f3;
+  color: #d6336c;
+  padding: 0.2em 0.4em;
+  border-radius: 3px;
+  font-size: 0.95em;
+}
+.markdown-preview pre code {
+  background: none;
+  color: inherit;
+  padding: 0;
+  border-radius: 0;
+  font-size: 1em;
+}
+.markdown-preview pre {
+  background: #23272f;
+  color: #f6f8fa;
+  padding: 1em;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin: 1em 0;
+}
+.checklist-item {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+}
 
 
 body {
