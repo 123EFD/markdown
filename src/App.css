@@ -70,11 +70,20 @@
 }
 
 
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
 body {
+  min-height: 100vh;
+  height: 100vh;
   background: var(--bg);
   color: var(--text);
   font-family: 'Segoe UI', Arial, sans-serif;
   transition: background 0.3s, color 0.3s;
+  box-sizing: border-box;
 }
 
 body[data-theme='light'] {
@@ -93,19 +102,27 @@ body[data-theme='dark'] {
 }
 
 .markdown-editor-container {
-  max-width: 900px;
-  margin: 2rem auto;
+  width: 100vw;
+  height: 100vh;
+  min-height: 100vh;
+  min-width: 100vw;
+  margin: 0;
   background: var(--panel);
-  border-radius: 12px;
-  box-shadow: 0 2px 16px rgba(0,0,0,0.07);
-  padding: 2rem;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .toolbar {
   display: flex;
   align-items: center;
   gap: 1rem;
-  margin-bottom: 1rem;
+  padding: 1rem 2rem 0.5rem 2rem;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  z-index: 2;
 }
 
 .filename-input {
@@ -147,28 +164,47 @@ body[data-theme='dark'] {
   font-size: 1rem;
 }
 
+
+.main-content-layout {
+  display: flex;
+  flex-direction: row;
+  gap: 2rem;
+  flex: 1 1 0%;
+  align-items: stretch;
+  height: 100%;
+  min-height: 0;
+}
+
 .editor-preview-wrapper {
   display: flex;
+  flex-direction: row;
+  flex: 1 1 0%;
   gap: 2rem;
-  margin-top: 2rem;
+  min-width: 0;
+  height: 100%;
+  padding: 2rem 2rem 2rem 2rem;
+  box-sizing: border-box;
 }
 
 .markdown-input {
   width: 50%;
-  min-height: 400px;
+  min-width: 0;
+  height: 100%;
   font-size: 1rem;
   padding: 1rem;
   border: 1px solid var(--border);
   border-radius: 8px;
-  resize: vertical;
+  resize: none;
   font-family: 'Fira Mono', 'Consolas', monospace;
   background: var(--input);
   color: var(--text);
+  box-sizing: border-box;
 }
 
 .markdown-preview {
   width: 50%;
-  min-height: 400px;
+  min-width: 0;
+  height: 100%;
   background: var(--input);
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -176,6 +212,23 @@ body[data-theme='dark'] {
   overflow: auto;
   text-align: left;
   color: var(--text);
+  box-sizing: border-box;
+}
+
+.note-list-column {
+  min-width: 220px;
+  max-width: 260px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 0 8px 8px 0;
+  padding: 1rem 0.5rem;
+  margin-left: 0;
+  height: 100%;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  overflow-y: auto;
 }
 
 .markdown-preview h1,

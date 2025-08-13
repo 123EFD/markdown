@@ -76,9 +76,9 @@ function App() {
   const [filename, setFilename] = useState('');
   const [theme, setTheme] = useState('light');
   const [renaming, setRenaming] = useState(false);
-  const [fileHistory, setFileHistory] = useState([]); // List of {name, timestamp, action}
   const [newFileName, setNewFileName] = useState('Untitled.md');
   const [showNewFileInput, setShowNewFileInput] = useState(false);
+  const [showNoteList, setShowNoteList] = useState(true);
 
   useEffect(() => {
     const stored = getFiles();
@@ -92,21 +92,14 @@ function App() {
       setMarkdown(`# Welcome to the Markdown Editor!\n\nType your *markdown* on the left.\n\n- Live preview on the right\n- **Enjoy!**`);
       setFilename('Untitled.md');
     }
-    // Load file history from localStorage
-    const hist = localStorage.getItem('markdown-file-history');
-    setFileHistory(hist ? JSON.parse(hist) : []);
+    // Removed file history loading
   }, []);
 
   useEffect(() => {
     document.body.setAttribute('data-theme', theme);
   }, [theme]);
 
-  const addHistory = (name, action) => {
-    const entry = { name, action, timestamp: new Date().toLocaleString() };
-    const updated = [entry, ...fileHistory].slice(0, 20); // keep last 20
-    setFileHistory(updated);
-    localStorage.setItem('markdown-file-history', JSON.stringify(updated));
-  };
+
 
   const handleSave = () => {
     if (!filename.trim()) return;
@@ -114,7 +107,7 @@ function App() {
     setFiles(updated);
     saveFiles(updated);
     setCurrentFile(filename);
-    addHistory(filename, 'Saved');
+  // Removed file history
     alert('File saved!');
   };
 
@@ -122,7 +115,7 @@ function App() {
     setMarkdown(files[name]);
     setCurrentFile(name);
     setFilename(name);
-    addHistory(name, 'Loaded');
+  // Removed file history
   };
 
   const handleDelete = (name) => {
@@ -131,7 +124,7 @@ function App() {
     delete updated[name];
     setFiles(updated);
     saveFiles(updated);
-    addHistory(name, 'Deleted');
+  // Removed file history
     if (currentFile === name) {
       const next = Object.keys(updated)[0];
       if (next) {
@@ -156,7 +149,7 @@ function App() {
     setCurrentFile(newName);
     setFilename(newName);
     setRenaming(false);
-    addHistory(`${oldName} → ${newName}`, 'Renamed');
+  // Removed file history
   };
 
   const handleCreateNewFile = () => {
@@ -173,7 +166,7 @@ function App() {
     setMarkdown('');
     setShowNewFileInput(false);
     setNewFileName('Untitled.md');
-    addHistory(name, 'Created');
+  // Removed file history
   };
 
   const handleExport = () => {
@@ -199,6 +192,9 @@ function App() {
         </button>
         <button onClick={() => setShowNewFileInput(v => !v)}>
           ➕ New File
+        </button>
+        <button onClick={() => setShowNoteList(v => !v)}>
+          {showNoteList ? 'Hide Notes' : 'Show Notes'}
         </button>
         {showNewFileInput && (
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
@@ -231,54 +227,49 @@ function App() {
           <button onClick={() => handleRename(currentFile, filename)}>Rename</button>
         )}
       </div>
-      <div className="file-list">
-        {Object.keys(files).map(name => (
-          <div key={name} className={`file-item${name === currentFile ? ' active' : ''}`}>
-            <span onClick={() => handleLoad(name)}>{name}</span>
-            <button onClick={() => handleDelete(name)} title="Delete">🗑️</button>
+      <div className="main-content-layout">
+        <div className="editor-preview-wrapper">
+          <textarea
+            className="markdown-input"
+            value={markdown}
+            onChange={e => setMarkdown(e.target.value)}
+            placeholder="Type your markdown here..."
+          />
+          <div className="markdown-preview">
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm, customMarkdownPlugins]}
+              rehypePlugins={[rehypeHighlight]}
+              components={{
+                // Checklist rendering
+                li({ children, checked, ...props }) {
+                  if (typeof checked === 'boolean') {
+                    return (
+                      <li {...props} className="checklist-item">
+                        <input type="checkbox" checked={checked} readOnly />{' '}
+                        {children}
+                      </li>
+                    );
+                  }
+                  return <li {...props}>{children}</li>;
+                },
+              }}
+            >
+              {markdown}
+            </ReactMarkdown>
           </div>
-        ))}
-      </div>
-      <div className="file-history-list">
-        <strong>File History</strong>
-        <ul>
-          {fileHistory.length === 0 && <li style={{color:'#888'}}>No history yet.</li>}
-          {fileHistory.map((h, i) => (
-            <li key={i} style={{fontSize:'0.95em'}}>
-              <span style={{fontWeight:'bold'}}>{h.name}</span> <span style={{color:'#888'}}>{h.action}</span> <span style={{color:'#aaa'}}>{h.timestamp}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
-      <div className="editor-preview-wrapper">
-        <textarea
-          className="markdown-input"
-          value={markdown}
-          onChange={e => setMarkdown(e.target.value)}
-          placeholder="Type your markdown here..."
-        />
-        <div className="markdown-preview">
-          <ReactMarkdown
-            remarkPlugins={[remarkGfm, customMarkdownPlugins]}
-            rehypePlugins={[rehypeHighlight]}
-            components={{
-              // Checklist rendering
-              li({ children, checked, ...props }) {
-                if (typeof checked === 'boolean') {
-                  return (
-                    <li {...props} className="checklist-item">
-                      <input type="checkbox" checked={checked} readOnly />{' '}
-                      {children}
-                    </li>
-                  );
-                }
-                return <li {...props}>{children}</li>;
-              },
-            }}
-          >
-            {markdown}
-          </ReactMarkdown>
         </div>
+        {showNoteList && (
+          <div className="file-list note-list-column">
+            <div style={{fontWeight:'bold',marginBottom:8}}>Saved Notes</div>
+            {Object.keys(files).length === 0 && <div style={{color:'#888'}}>No notes yet.</div>}
+            {Object.keys(files).map(name => (
+              <div key={name} className={`file-item${name === currentFile ? ' active' : ''}`}>
+                <span onClick={() => handleLoad(name)}>{name}</span>
+                <button onClick={() => handleDelete(name)} title="Delete">🗑️</button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
