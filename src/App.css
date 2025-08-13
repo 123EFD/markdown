@@ -18,20 +18,27 @@
   padding: 0.5em 1em;
   background: rgba(0,120,212,0.05);
 }
+
 .markdown-preview table {
   border-collapse: collapse;
   width: 100%;
   margin: 1em 0;
+  background: var(--panel);
+  color: var(--text);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
 }
 .markdown-preview th, .markdown-preview td {
   border: 1px solid var(--border);
   padding: 0.5em 1em;
+  background: transparent;
+  color: var(--text);
 }
 .markdown-preview th {
-  background: #f3f3f3;
+  background: var(--input);
+  color: var(--text);
 }
 .markdown-preview tr:nth-child(even) td {
-  background: #fafbfc;
+  background: rgba(120,120,120,0.04);
 }
 .markdown-preview code {
   background: #f3f3f3;
