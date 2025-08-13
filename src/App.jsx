@@ -76,6 +76,9 @@ function App() {
   const [filename, setFilename] = useState('');
   const [theme, setTheme] = useState('light');
   const [renaming, setRenaming] = useState(false);
+  const [fileHistory, setFileHistory] = useState([]); // List of {name, timestamp, action}
+  const [newFileName, setNewFileName] = useState('Untitled.md');
+  const [showNewFileInput, setShowNewFileInput] = useState(false);
 
   useEffect(() => {
     const stored = getFiles();
@@ -89,11 +92,21 @@ function App() {
       setMarkdown(`# Welcome to the Markdown Editor!\n\nType your *markdown* on the left.\n\n- Live preview on the right\n- **Enjoy!**`);
       setFilename('Untitled.md');
     }
+    // Load file history from localStorage
+    const hist = localStorage.getItem('markdown-file-history');
+    setFileHistory(hist ? JSON.parse(hist) : []);
   }, []);
 
   useEffect(() => {
     document.body.setAttribute('data-theme', theme);
   }, [theme]);
+
+  const addHistory = (name, action) => {
+    const entry = { name, action, timestamp: new Date().toLocaleString() };
+    const updated = [entry, ...fileHistory].slice(0, 20); // keep last 20
+    setFileHistory(updated);
+    localStorage.setItem('markdown-file-history', JSON.stringify(updated));
+  };
 
   const handleSave = () => {
     if (!filename.trim()) return;
@@ -101,6 +114,7 @@ function App() {
     setFiles(updated);
     saveFiles(updated);
     setCurrentFile(filename);
+    addHistory(filename, 'Saved');
     alert('File saved!');
   };
 
@@ -108,6 +122,7 @@ function App() {
     setMarkdown(files[name]);
     setCurrentFile(name);
     setFilename(name);
+    addHistory(name, 'Loaded');
   };
 
   const handleDelete = (name) => {
@@ -116,6 +131,7 @@ function App() {
     delete updated[name];
     setFiles(updated);
     saveFiles(updated);
+    addHistory(name, 'Deleted');
     if (currentFile === name) {
       const next = Object.keys(updated)[0];
       if (next) {
@@ -140,6 +156,24 @@ function App() {
     setCurrentFile(newName);
     setFilename(newName);
     setRenaming(false);
+    addHistory(`${oldName} → ${newName}`, 'Renamed');
+  };
+
+  const handleCreateNewFile = () => {
+    let name = newFileName.trim() || 'Untitled.md';
+    if (files[name]) {
+      alert('File already exists!');
+      return;
+    }
+    const updated = { ...files, [name]: '' };
+    setFiles(updated);
+    saveFiles(updated);
+    setCurrentFile(name);
+    setFilename(name);
+    setMarkdown('');
+    setShowNewFileInput(false);
+    setNewFileName('Untitled.md');
+    addHistory(name, 'Created');
   };
 
   const handleExport = () => {
@@ -163,9 +197,28 @@ function App() {
         <button onClick={handleThemeSwitch}>
           {theme === 'light' ? '🌙 Dark' : '☀️ Light'}
         </button>
+        <button onClick={() => setShowNewFileInput(v => !v)}>
+          ➕ New File
+        </button>
+        {showNewFileInput && (
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            <input
+              value={newFileName}
+              onChange={e => setNewFileName(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') handleCreateNewFile();
+              }}
+              className="filename-input"
+              style={{ width: Math.max(10, newFileName.length) + 'ch' }}
+              autoFocus
+            />
+            <button onClick={handleCreateNewFile}>Create</button>
+          </span>
+        )}
         <input
           value={filename}
           onChange={e => setFilename(e.target.value)}
+          onFocus={() => setRenaming(true)}
           onBlur={() => setRenaming(false)}
           onKeyDown={e => {
             if (e.key === 'Enter') handleRename(currentFile, filename);
@@ -185,6 +238,17 @@ function App() {
             <button onClick={() => handleDelete(name)} title="Delete">🗑️</button>
           </div>
         ))}
+      </div>
+      <div className="file-history-list">
+        <strong>File History</strong>
+        <ul>
+          {fileHistory.length === 0 && <li style={{color:'#888'}}>No history yet.</li>}
+          {fileHistory.map((h, i) => (
+            <li key={i} style={{fontSize:'0.95em'}}>
+              <span style={{fontWeight:'bold'}}>{h.name}</span> <span style={{color:'#888'}}>{h.action}</span> <span style={{color:'#aaa'}}>{h.timestamp}</span>
+            </li>
+          ))}
+        </ul>
       </div>
       <div className="editor-preview-wrapper">
         <textarea
