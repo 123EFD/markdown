@@ -76,9 +76,85 @@ function App() {
   const [filename, setFilename] = useState('');
   const [theme, setTheme] = useState('light');
   const [renaming, setRenaming] = useState(false);
-  const [newFileName, setNewFileName] = useState('Untitled.md');
-  const [showNewFileInput, setShowNewFileInput] = useState(false);
   const [showNoteList, setShowNoteList] = useState(true);
+  const [showNewFileInput, setShowNewFileInput] = useState(false);
+  const [newFileName, setNewFileName] = useState('Untitled.md');
+  const [folders, setFolders] = useState({}); // {folderName: [file1, file2]}
+  const [draggedFile, setDraggedFile] = useState(null);
+  const [showNewFolderInput, setShowNewFolderInput] = useState(false);
+  const [newFolderName, setNewFolderName] = useState('New Folder');
+  const [folderRenaming, setFolderRenaming] = useState(''); // folder name being renamed
+  const [folderRenameValue, setFolderRenameValue] = useState('');
+  const [collapsedFolders, setCollapsedFolders] = useState({}); // {folderName: true/false}
+  const handleRenameFolder = (oldName, newName) => {
+    if (!newName.trim() || folders[newName]) return alert('Invalid or duplicate folder name!');
+    const updated = { ...folders };
+    updated[newName] = updated[oldName];
+    delete updated[oldName];
+    setFolders(updated);
+    setFolderRenaming('');
+    setFolderRenameValue('');
+    // Also update collapsed state
+    setCollapsedFolders(prev => {
+      const c = { ...prev };
+      c[newName] = c[oldName];
+      delete c[oldName];
+      return c;
+    });
+  };
+
+  const handleDeleteFolder = (folder) => {
+    if (!window.confirm(`Delete folder '${folder}' and all its files?`)) return;
+    const updated = { ...folders };
+    delete updated[folder];
+    setFolders(updated);
+    setCollapsedFolders(prev => {
+      const c = { ...prev };
+      delete c[folder];
+      return c;
+    });
+  };
+
+  const handleToggleCollapse = (folder) => {
+    setCollapsedFolders(prev => ({ ...prev, [folder]: !prev[folder] }));
+  };
+  const handleCreateNewFolder = () => {
+    let name = newFolderName.trim() || 'New Folder';
+    if (folders[name]) {
+      alert('Folder already exists!');
+      return;
+    }
+    setFolders({ ...folders, [name]: [] });
+    setShowNewFolderInput(false);
+    setNewFolderName('New Folder');
+  };
+
+  const handleDropFileToFolder = (folder, file) => {
+    // Remove from root
+    const newFiles = { ...files };
+    delete newFiles[file];
+    setFiles(newFiles);
+    // Add to folder
+    setFolders({
+      ...folders,
+      [folder]: [...(folders[folder] || []), file],
+    });
+  };
+  const handleCreateNewFile = () => {
+    let name = newFileName.trim() || 'Untitled.md';
+    if (files[name]) {
+      alert('File already exists!');
+      return;
+    }
+    const updated = { ...files, [name]: '' };
+    setFiles(updated);
+    saveFiles(updated);
+    setCurrentFile(name);
+    setFilename(name);
+    setMarkdown('');
+    setShowNewFileInput(false);
+    setNewFileName('Untitled.md');
+  };
 
   useEffect(() => {
     const stored = getFiles();
@@ -92,14 +168,11 @@ function App() {
       setMarkdown(`# Welcome to the Markdown Editor!\n\nType your *markdown* on the left.\n\n- Live preview on the right\n- **Enjoy!**`);
       setFilename('Untitled.md');
     }
-    // Removed file history loading
   }, []);
 
   useEffect(() => {
     document.body.setAttribute('data-theme', theme);
   }, [theme]);
-
-
 
   const handleSave = () => {
     if (!filename.trim()) return;
@@ -107,7 +180,6 @@ function App() {
     setFiles(updated);
     saveFiles(updated);
     setCurrentFile(filename);
-  // Removed file history
     alert('File saved!');
   };
 
@@ -115,7 +187,6 @@ function App() {
     setMarkdown(files[name]);
     setCurrentFile(name);
     setFilename(name);
-  // Removed file history
   };
 
   const handleDelete = (name) => {
@@ -124,7 +195,6 @@ function App() {
     delete updated[name];
     setFiles(updated);
     saveFiles(updated);
-  // Removed file history
     if (currentFile === name) {
       const next = Object.keys(updated)[0];
       if (next) {
@@ -149,24 +219,6 @@ function App() {
     setCurrentFile(newName);
     setFilename(newName);
     setRenaming(false);
-  // Removed file history
-  };
-
-  const handleCreateNewFile = () => {
-    let name = newFileName.trim() || 'Untitled.md';
-    if (files[name]) {
-      alert('File already exists!');
-      return;
-    }
-    const updated = { ...files, [name]: '' };
-    setFiles(updated);
-    saveFiles(updated);
-    setCurrentFile(name);
-    setFilename(name);
-    setMarkdown('');
-    setShowNewFileInput(false);
-    setNewFileName('Untitled.md');
-  // Removed file history
   };
 
   const handleExport = () => {
@@ -185,7 +237,7 @@ function App() {
   return (
     <div className="markdown-editor-container">
       <div className="toolbar">
-        <button onClick={handleSave}>💾 Save</button>
+  <button className="save-btn" onClick={handleSave}>💾 Save</button>
         <button onClick={handleExport}>⬇️ Export</button>
         <button onClick={handleThemeSwitch}>
           {theme === 'light' ? '🌙 Dark' : '☀️ Light'}
@@ -195,6 +247,9 @@ function App() {
         </button>
         <button onClick={() => setShowNoteList(v => !v)}>
           {showNoteList ? 'Hide Notes' : 'Show Notes'}
+        </button>
+        <button onClick={() => setShowNewFolderInput(v => !v)}>
+          📁 New Folder
         </button>
         {showNewFileInput && (
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
@@ -211,20 +266,20 @@ function App() {
             <button onClick={handleCreateNewFile}>Create</button>
           </span>
         )}
-        <input
-          value={filename}
-          onChange={e => setFilename(e.target.value)}
-          onFocus={() => setRenaming(true)}
-          onBlur={() => setRenaming(false)}
-          onKeyDown={e => {
-            if (e.key === 'Enter') handleRename(currentFile, filename);
-          }}
-          className="filename-input"
-          style={{ width: Math.max(10, filename.length) + 'ch' }}
-          disabled={!renaming && currentFile === filename}
-        />
-        {currentFile !== filename && (
-          <button onClick={() => handleRename(currentFile, filename)}>Rename</button>
+        {showNewFolderInput && (
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            <input
+              value={newFolderName}
+              onChange={e => setNewFolderName(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') handleCreateNewFolder();
+              }}
+              className="filename-input"
+              style={{ width: Math.max(10, newFolderName.length) + 'ch' }}
+              autoFocus
+            />
+            <button onClick={handleCreateNewFolder}>Create</button>
+          </span>
         )}
       </div>
       <div className="main-content-layout">
@@ -237,7 +292,7 @@ function App() {
           />
           <div className="markdown-preview">
             <ReactMarkdown
-              remarkPlugins={[remarkGfm, customMarkdownPlugins()]}
+              remarkPlugins={[remarkGfm, customMarkdownPlugins]}
               rehypePlugins={[rehypeHighlight]}
               components={{
                 // Checklist rendering
@@ -261,11 +316,101 @@ function App() {
         {showNoteList && (
           <div className="file-list note-list-column">
             <div style={{fontWeight:'bold',marginBottom:8}}>Saved Notes</div>
-            {Object.keys(files).length === 0 && <div style={{color:'#888'}}>No notes yet.</div>}
+            {/* Root files */}
+            {Object.keys(files).length === 0 && Object.keys(folders).length === 0 && <div style={{color:'#888'}}>No notes yet.</div>}
             {Object.keys(files).map(name => (
-              <div key={name} className={`file-item${name === currentFile ? ' active' : ''}`}>
-                <span onClick={() => handleLoad(name)}>{name}</span>
-                <button onClick={() => handleDelete(name)} title="Delete">🗑️</button>
+              <div
+                key={name}
+                className={`file-item${name === currentFile ? ' active' : ''}`}
+                draggable
+                onDragStart={() => setDraggedFile(name)}
+                onDragEnd={() => setDraggedFile(null)}
+              >
+                {renaming && currentFile === name ? (
+                  <>
+                    <input
+                      value={filename}
+                      onChange={e => setFilename(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') handleRename(currentFile, filename);
+                      }}
+                      className="filename-input"
+                      style={{ width: Math.max(10, filename.length) + 'ch' }}
+                      autoFocus
+                    />
+                    <button className="save-btn" onClick={() => handleRename(currentFile, filename)}>Save</button>
+                    <button onClick={() => setRenaming(false)}>Cancel</button>
+                  </>
+                ) : (
+                  <>
+                    <span onClick={() => handleLoad(name)}>{name}</span>
+                    <button onClick={() => { setRenaming(true); setFilename(name); }}>Rename</button>
+                    <button onClick={() => handleDelete(name)} title="Delete">🗑️</button>
+                  </>
+                )}
+              </div>
+            ))}
+            {/* Folders */}
+            {Object.keys(folders).map(folder => (
+              <div
+                key={folder}
+                className="folder-item"
+                onDragOver={e => e.preventDefault()}
+                onDrop={() => draggedFile && handleDropFileToFolder(folder, draggedFile)}
+              >
+                <div style={{display:'flex',alignItems:'center',fontWeight:'bold',margin:'6px 0',gap:6}}>
+                  <span
+                    onClick={() => handleToggleCollapse(folder)}
+                    style={{fontSize:'1.1em',cursor:'pointer',userSelect:'none',marginRight:2}}
+                    title={collapsedFolders[folder] ? 'Expand' : 'Collapse'}
+                  >
+                    {collapsedFolders[folder] ? '▶' : '▼'}
+                  </span>
+                  <span
+                    onClick={() => handleToggleCollapse(folder)}
+                    style={{cursor:'pointer',userSelect:'none'}}
+                    title={collapsedFolders[folder] ? 'Expand' : 'Collapse'}
+                  >
+                    
+                  </span>
+                  {folderRenaming === folder ? (
+                    <>
+                      <input
+                        value={folderRenameValue}
+                        onChange={e => setFolderRenameValue(e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') handleRenameFolder(folder, folderRenameValue);
+                        }}
+                        className="filename-input"
+                        style={{ width: Math.max(10, folderRenameValue.length) + 'ch' }}
+                        autoFocus
+                      />
+                      <button className="save-btn" onClick={() => handleRenameFolder(folder, folderRenameValue)}>Save</button>
+                      <button className="cancel-btn" onClick={() => setFolderRenaming('')}>Cancel</button>
+                    </>
+                  ) : (
+                    <>
+                       {folder}
+                      <button className="rename-btn" onClick={() => { setFolderRenaming(folder); setFolderRenameValue(folder); }}>Rename</button>
+                      <button onClick={() => handleDeleteFolder(folder)} title="Delete">🗑️</button>
+                    </>
+                  )}
+                </div>
+                {!collapsedFolders[folder] && (
+                  <>
+                    {(folders[folder] || []).length === 0 && <div style={{color:'#aaa',fontSize:'0.95em',marginLeft:16}}>Empty</div>}
+                    {(folders[folder] || []).map(name => (
+                      <div
+                        key={name}
+                        className={`file-item${name === currentFile ? ' active' : ''}`}
+                      >
+                        <span onClick={() => handleLoad(name)}>{name}</span>
+                        <button onClick={() => { setRenaming(true); setFilename(name); }}>Rename</button>
+                        <button onClick={() => handleDelete(name)} title="Delete">🗑️</button>
+                      </div>
+                    ))}
+                  </>
+                )}
               </div>
             ))}
           </div>
