@@ -1,5 +1,3 @@
-
-
 import { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -17,7 +15,7 @@ function customMarkdownPlugins() {
       // Regex for highlight ==text==
       const highlightRegex = /==([^=]+)==/g;
       // Regex for superscript ^text^
-      const supRegex = /\^([^\^]+)\^/g;
+      const supRegex = /\^([^^]+)\^/g;
       // Regex for subscript ~text~
       const subRegex = /~([^~]+)~/g;
       while (true) {
@@ -109,7 +107,7 @@ function App() {
     delete updated[folder];
     setFolders(updated);
     setCollapsedFolders(prev => {
-      const c = { ...prev };
+      const c = { ...prev }; // Create a copy of the previous state
       delete c[folder];
       return c;
     });
@@ -223,7 +221,7 @@ function App() {
 
   const handleExport = () => {
     const blob = new Blob([markdown], { type: 'text/markdown' });
-    const a = document.createElement('a');
+    const a = document.createElement('a'); 
     a.href = URL.createObjectURL(blob);
     a.download = filename;
     a.click();
