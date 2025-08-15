@@ -55,6 +55,8 @@ function customMarkdownPlugins() {
   };
 }
 import './App.css';
+import { diffLines } from './diffUtils';
+import { useRef } from 'react';
 
 const STORAGE_KEY = 'markdown-files';
 
@@ -68,7 +70,38 @@ function saveFiles(files) {
 }
 
 function App() {
+  const versionPanelRef = useRef(null);
+  const [versionPanelWidth, setVersionPanelWidth] = useState(380);
+  // Drag state for resizing
+  const dragState = useRef({ dragging: false, startX: 0, startWidth: 0 });
+
+  // Mouse event handlers for resizing
+  const handleResizeMouseDown = (e) => {
+    dragState.current = {
+      dragging: true,
+      startX: e.clientX,
+      startWidth: versionPanelWidth,
+    };
+    document.addEventListener('mousemove', handleResizeMouseMove);
+    document.addEventListener('mouseup', handleResizeMouseUp);
+  };
+  const handleResizeMouseMove = (e) => {
+    if (!dragState.current.dragging) return;
+    const delta = e.clientX - dragState.current.startX;
+    setVersionPanelWidth(Math.max(220, dragState.current.startWidth + delta));
+  };
+  const handleResizeMouseUp = () => {
+    dragState.current.dragging = false;
+    document.removeEventListener('mousemove', handleResizeMouseMove);
+    document.removeEventListener('mouseup', handleResizeMouseUp);
+  };
   const [markdown, setMarkdown] = useState('');
+  const [showVersionHistory, setShowVersionHistory] = useState(false);
+  // Undo/Redo stacks for current note
+  const [history, setHistory] = useState([]); // undo stack
+  const [redoStack, setRedoStack] = useState([]); // redo stack
+  // Version history for each file
+  const [fileHistories, setFileHistories] = useState({});
   const [files, setFiles] = useState({});
   const [currentFile, setCurrentFile] = useState('');
   const [filename, setFilename] = useState('');
@@ -172,13 +205,50 @@ function App() {
     document.body.setAttribute('data-theme', theme);
   }, [theme]);
 
+  // Save current version to file history
   const handleSave = () => {
     if (!filename.trim()) return;
     const updated = { ...files, [filename]: markdown };
     setFiles(updated);
     saveFiles(updated);
     setCurrentFile(filename);
-    alert('File saved!');
+    // Only add to version history if content changed from last version
+    setFileHistories(fh => {
+      const prevVersions = fh[filename] || [];
+      const lastVersion = prevVersions.length > 0 ? prevVersions[prevVersions.length - 1] : undefined;
+      if (lastVersion === markdown) {
+        alert('No changes to save!');
+        return fh;
+      }
+      alert('File saved!');
+      return {
+        ...fh,
+        [filename]: [...prevVersions, markdown]
+      };
+    });
+  };
+
+  // Custom onChange for editor with undo/redo
+  const handleMarkdownChange = (value) => {
+    setHistory(prev => [...prev, markdown]);
+    setRedoStack([]); // Clear redo stack on new edit
+    setMarkdown(value);
+  };
+
+  // Undo/Redo handlers
+  const handleUndo = () => {
+    if (history.length === 0) return;
+    const prev = history[history.length - 1];
+    setRedoStack(r => [markdown, ...r]);
+    setHistory(h => h.slice(0, -1));
+    setMarkdown(prev);
+  };
+  const handleRedo = () => {
+    if (redoStack.length === 0) return;
+    const next = redoStack[0];
+    setHistory(h => [...h, markdown]);
+    setRedoStack(r => r.slice(1));
+    setMarkdown(next);
   };
 
   const handleLoad = (name) => {
@@ -235,7 +305,12 @@ function App() {
   return (
     <div className="markdown-editor-container">
       <div className="toolbar">
-  <button className="save-btn" onClick={handleSave}>💾 Save</button>
+        <button onClick={() => setShowVersionHistory(v => !v)}>
+          {showVersionHistory ? 'Hide Version History' : 'Show Version History'}
+        </button>
+        <button className="save-btn" onClick={handleSave}>💾 Save</button>
+        <button onClick={handleUndo} disabled={history.length === 0}>↩️ Undo</button>
+        <button onClick={handleRedo} disabled={redoStack.length === 0}>↪️ Redo</button>
         <button onClick={handleExport}>⬇️ Export</button>
         <button onClick={handleThemeSwitch}>
           {theme === 'light' ? '🌙 Dark' : '☀️ Light'}
@@ -285,9 +360,77 @@ function App() {
           <textarea
             className="markdown-input"
             value={markdown}
-            onChange={e => setMarkdown(e.target.value)}
+            onChange={e => handleMarkdownChange(e.target.value)}
             placeholder="Type your markdown here..."
           />
+      {/* Version History Panel */}
+      {showVersionHistory && fileHistories[filename] && fileHistories[filename].length > 0 && (
+        <div
+          ref={versionPanelRef}
+          style={{
+            margin: '1em 0',
+            padding: '1em',
+            border: '1px solid #eee',
+            borderRadius: 8,
+            width: versionPanelWidth,
+            minWidth: 220,
+            maxWidth: 700,
+            resize: 'none',
+            position: 'relative',
+            display: 'inline-block',
+            verticalAlign: 'top',
+            background: '#fafbfc',
+          }}
+        >
+          <b>Version History for {filename}:</b>
+          <div
+            style={{
+              position: 'absolute',
+              top: 0,
+              right: 0,
+              width: 8,
+              height: '100%',
+              cursor: 'ew-resize',
+              zIndex: 2,
+              background: 'transparent',
+              userSelect: 'none',
+            }}
+            onMouseDown={handleResizeMouseDown}
+            title="Drag to resize"
+          />
+          <ul style={{maxHeight:400,overflowY:'auto',overflowX:'hidden',marginRight:12}}>
+            {fileHistories[filename].map((ver, i) => {
+              // Compare with previous version (or empty string for v1)
+              const prev = i === 0 ? '' : fileHistories[filename][i-1];
+              const diff = diffLines(prev, ver);
+              return (
+                <li key={i} style={{marginBottom:4}}>
+                  <button onClick={() => setMarkdown(ver)} style={{fontSize:'0.9em'}}>Restore v{i+1}</button>
+                  <span style={{marginLeft:8, fontFamily:'monospace', fontSize:'0.92em'}}>
+                    {diff.map((part, idx) =>
+                      part.type === 'unchanged' ? null : (
+                        <span
+                          key={idx}
+                          style={{
+                            background: part.type === 'added' ? '#d4f8e8' : '#ffd6d6',
+                            color: part.type === 'added' ? '#228b22' : '#b22222',
+                            textDecoration: part.type === 'removed' ? 'line-through' : 'none',
+                            marginRight: 2,
+                            borderRadius: 2,
+                            padding: '0 2px',
+                          }}
+                        >
+                          {part.text}
+                        </span>
+                      )
+                    )}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
           <div className="markdown-preview">
             <ReactMarkdown
               remarkPlugins={[remarkGfm, customMarkdownPlugins]}
